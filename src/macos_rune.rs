@@ -56,6 +56,7 @@ use crate::transcription::models::{
 };
 use crate::transcription::preparation::TranscriptionPreparation;
 
+mod close_restart;
 mod control;
 pub(crate) mod status_item;
 
@@ -525,6 +526,7 @@ pub fn run(shutdown: &'static AtomicBool, listener: ListenerConfig) -> Result<()
         meeting_menu_at: Instant::now(),
         model_menu_at: Instant::now(),
         show_dock_icon: settings.show_dock_icon,
+        close_restart: Default::default(),
     };
     // Quit ends the loop and finishes below; AppKit's own terminate (the quit
     // Apple event, logout) would `exit` from inside it, so its
@@ -842,6 +844,7 @@ struct Pump {
     meeting_menu_at: Instant,
     model_menu_at: Instant,
     show_dock_icon: bool,
+    close_restart: close_restart::CloseRestart,
 }
 
 struct PumpState {
@@ -1030,6 +1033,13 @@ impl Pump {
             let _ = call.reply.send(reply);
         }
         while let Ok(call) = self.control_calls.try_recv() {
+            self.control(call);
+        }
+        if let Some(call) = self.close_restart.tick(
+            window_visible(),
+            crate::desktop::onboarding::completion_recorded,
+            Instant::now(),
+        ) {
             self.control(call);
         }
         while let Some(action) = self

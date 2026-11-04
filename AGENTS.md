@@ -109,6 +109,16 @@ commit as the change.
   turning frame was a GPU upload whose command-buffer pools stayed in the
   device the HUD shares with the window. Closing Output after a visit
   127 → 222 MB before; 144 → 150 MB now.
+- Rune vendored in `vendor/rune` with one patch (`PATCHES.md`): a window
+  with `release_gpu_when_closed` gets its own GPU device instead of the
+  overlays' shared one, so its drawables and most GPU memory go when it
+  closes (window visit leftover +49 MB → +22–29 MB).
+- Closing the macOS window restarts Hex in the background
+  (`macos_rune/close_restart.rs`, `hex restart`'s own path, retried every
+  2 s while a dictation or meeting is busy), since Metal's per-process
+  pools and Rune's retained frame never shrink: back to the pre-open
+  footprint (112 MB → 107 MB measured); the shortcut works ~0.9 s after
+  the close. Paste Last reads History at launch so it survives.
 
 ## Purpose
 
@@ -1259,14 +1269,18 @@ CoreAudio formats, AppleScript details, or event serialization.
   `rune-theme-opencode`, and (with `capture`) `rune-motion` at one pinned Git
   rev in `Cargo.toml` and `Cargo.lock`; every pin bump
   must also update `cargoLock.outputHashes."rune-0.0.1"` in `nix/package.nix`
-  and keep `windows` 0.62.2 for `gpu-allocator` in `Cargo.lock`.
+  and keep `windows` 0.62.2 for `gpu-allocator` in `Cargo.lock`. In this
+  fork the Rune crates build from `vendor/rune` (`[patch]` in `Cargo.toml`);
+  a pin bump also refreshes it and reapplies `vendor/rune/PATCHES.md`.
 - Hex runs as one long-lived process per user and data root on every OS: a
   menu-bar process on macOS (`macos_rune`, native `NSStatusItem`, native Metal
   `NSPanel` HUD, Rune meeting-capsule overlays), a tray process on Windows
   (`windows/rune`, named-event single instance, Rune overlay HUD), and a
   single-instance process on Linux (`linux/app`, socket + lock in the data
   root, Rune overlay HUD). Closing the window never stops the runtime, listener,
-  HUD, or accepted work.
+  HUD, or accepted work, except that on macOS it then restarts Hex as
+  `hex restart` does, once nothing records, transcribes, or runs a meeting
+  (`macos_rune/close_restart.rs`).
 - Updates follow the release protocol's client rules exactly (the shared
   vectors must pass). Versions are display text and never compared: each
   channel has one current release, and Hex takes it whenever it is not the

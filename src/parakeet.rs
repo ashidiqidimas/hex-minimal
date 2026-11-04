@@ -526,7 +526,11 @@ fn run_output_worker(
     events: &mpsc::Sender<WorkerEvent>,
 ) {
     let mut paster = Paster::new(activity);
-    let mut last_transcript = None;
+    // Paste Last survives a restart (the window's close restarts Hex).
+    let mut last_transcript = history
+        .as_ref()
+        .and_then(|history| history.recent(1).into_iter().next())
+        .map(|entry| entry.final_text);
     let mut ordered = OrderedOutputs::default();
     while let Ok(job) = jobs.recv() {
         if matches!(job, OutputJob::PreparePaste) {

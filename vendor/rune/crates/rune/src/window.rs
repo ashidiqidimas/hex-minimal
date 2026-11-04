@@ -816,7 +816,10 @@ impl<S: 'static> Host<S> {
                 let features = self.comp.as_ref().map_or(wgpu::Features::empty(), |c| c.features());
                 let transparent = self.options.transparent;
                 // A shared device that can't composite this window's translucent pixels gets its own.
-                let cached = self.gpu_pool.borrow().upgrade().and_then(|gpu| {
+                // So does a window that releases its GPU on close: on a device the overlays share,
+                // the command-buffer pools its frames grew would outlive it (hex-minimal patch).
+                let shared = (!self.release_gpu).then(|| self.gpu_pool.borrow().upgrade()).flatten();
+                let cached = shared.and_then(|gpu| {
                     let surface = gpu.instance.create_surface(window.clone()).ok()?;
                     crate::render::translucency::serves(&gpu, &surface, features, transparent).then_some((gpu, surface))
                 });
@@ -826,7 +829,9 @@ impl<S: 'static> Host<S> {
                     let (gpu, surface, renderer) = Gpu::for_surface(features, transparent, |instance| instance.create_surface(window.clone()).map_err(|e| e.to_string()))?;
                     prewarmed = renderer;
                     let gpu = Arc::new(gpu);
-                    *self.gpu_pool.borrow_mut() = Arc::downgrade(&gpu);
+                    if !self.release_gpu {
+                        *self.gpu_pool.borrow_mut() = Arc::downgrade(&gpu);
+                    }
                     (gpu, surface)
                 };
                 (Some(gpu), surface)

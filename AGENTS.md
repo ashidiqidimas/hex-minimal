@@ -1,6 +1,51 @@
 <!-- tallow -->
 # Hex Agent Guide
 
+## Personal fork (read first)
+
+This checkout is Dimas's personal fork of `anomalyco/hex`. This section
+overrides upstream's process below (Private Kit Tool, PRs to `dev`, CI,
+releases, Dax/Kit approvals): none of that applies here. Upstream takes no
+pull requests.
+
+- Remotes: `origin` is the fork (`ashidiqidimas/hex-minimal`), `upstream`
+  is `anomalyco/hex`.
+- `dev` is a pristine mirror of `upstream/dev`; it only ever fast-forwards.
+  All fork work lives on `personal`, committed directly (no PRs). Larger
+  experiments branch from `personal` and merge back.
+- Sync with upstream by rebasing `personal` onto it:
+
+  ```sh
+  git fetch upstream
+  git checkout dev && git merge --ff-only upstream/dev && git push origin dev
+  git checkout personal && git rebase dev
+  git push --force-with-lease origin personal
+  ```
+
+  `rerere` is enabled, so repeated conflicts resolve themselves; check its
+  result. Resolve a conflict by keeping upstream's change plus the fork
+  change's intent (see Fork changes). Drop a fork commit upstream made
+  obsolete.
+- Keep fork changes additive: new files or modules hooked in at few lines,
+  so rebases stay cheap. Squash fixups into the commit they fix.
+- Build and install the signed local app (Developer ID in the login
+  keychain, team `H9PJ7U2A6K`):
+
+  ```sh
+  HEX_TEAM_ID=H9PJ7U2A6K HEX_LOCAL_BUILD=1 ./scripts/install-app.sh
+  ```
+
+  `HEX_LOCAL_BUILD=1` disables self-updates, which would replace the fork
+  with upstream's release. When cargo reports `rustc … is not supported`,
+  run `rustup update stable`.
+
+### Fork changes
+
+One line per change on `personal`: what and why. Update it in the same
+commit as the change.
+
+- This section.
+
 ## Private Kit Tool
 
 `dev` and `production` take changes only through pull requests (Dax's

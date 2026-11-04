@@ -506,7 +506,7 @@ pub fn run(shutdown: &'static AtomicBool, listener: ListenerConfig) -> Result<()
     // The capture capsule, picker, and ink.
     #[cfg(hex_capture)]
     let capture_overlays =
-        Some(crate::rune_ui::capture_capsule::feed::CaptureOverlays::install(&mut app));
+        crate::rune_ui::capture_capsule::feed::CaptureOverlays::install_if_on(&mut app);
     let pump = Pump {
         window: window.clone(),
         capsules,

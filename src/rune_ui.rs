@@ -116,7 +116,7 @@ pub(crate) fn run_app(
     live_text::install(&mut app, crate::rune_hud::live_text_place);
     // The capture capsule, picker, and ink.
     let _capture_overlays =
-        crate::rune_ui::capture_capsule::feed::CaptureOverlays::install(&mut app);
+        crate::rune_ui::capture_capsule::feed::CaptureOverlays::install_if_on(&mut app);
     let meetings = crate::meeting::runtime::Meetings::install(&mut app, shutdown)
         .inspect_err(|error| tracing::error!(%error, "meetings could not start"))
         .ok();

@@ -27,6 +27,32 @@ fn description(enabled: bool) -> &'static str {
     }
 }
 
+/// Annotate's overlays exist only when it was on at launch, so turning it
+/// on starts it, and turning it off frees its memory, at the next restart.
+fn restart_row(p: Paint, enabled: bool) -> El {
+    let why = if enabled {
+        tr("Turns on when Hex restarts")
+    } else {
+        tr("Needs a restart")
+    };
+    if !cfg!(target_os = "macos") {
+        return note("capture-restart-note", why, p.muted());
+    }
+    setting_row(
+        p,
+        "capture-restart-row",
+        tr("Restart Hex"),
+        Some(why),
+        button(
+            p,
+            "capture-restart",
+            tr("Restart Hex"),
+            ButtonKind::Secondary,
+            |ui: &mut Ui, _| ui.ask(PlatformRequest::Permission(PermissionAction::Restart)),
+        ),
+    )
+}
+
 /// Turns Annotate on or off; turning it on fails while its shortcut
 /// collides with another, and leaves the shortcuts as they are.
 fn set_enabled(settings: &mut AppSettings, enabled: bool) -> Result<(), &'static str> {
@@ -414,6 +440,9 @@ pub(super) fn pane(ui: &Ui, p: Paint, layer: &mut Vec<El>) -> El {
             ),
         ],
     ));
+    if crate::app_settings::capture_needs_restart(enabled) {
+        content = content.child(card(p, "capture-restart", vec![restart_row(p, enabled)]));
+    }
     if enabled && view.scrawl_running {
         content = content.child(scrawl_running(p, &view));
     }

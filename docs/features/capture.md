@@ -29,7 +29,13 @@ Turn it on                               // capture.gate
 │   iPhone, then Microphone, then Accessibility; capture_host::permissions)
 │   -> refused with code `permission`, no error tone, and the capsule's
 │   permission helper opens (capture.permission)
-└── Off -> no capture host, engine, sink, thread, or folder; `hex annotate` -> feature-off
+├── Off -> no capture host, engine, sink, thread, or folder; `hex annotate` -> feature-off
+└── Off at launch -> no capsule, picker, or ink overlay either (~50 MB); the
+    switch then waits for a restart: turned on, captures stay off and the
+    pane offers Restart Hex (macOS; a note elsewhere); turned off while the
+    overlays exist, the host stops at once and the pane says it needs a
+    restart to free them (CaptureOverlays::install_if_on,
+    app_settings::capture_needs_restart; unit-tested mapping only)
 
 Draw                                     // capture.draw (capture_host::drawing)
 ├── One key: tap (under DRAW_HOLD, 250 ms) to start and again to stop; held

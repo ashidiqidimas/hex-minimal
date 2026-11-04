@@ -425,6 +425,15 @@ pub fn listen(
                     RecognitionControl::ScrawlCapture { action, reply } => {
                         let answer = match capture_host.as_mut() {
                             Some(host) => host.control(action, &input),
+                            None if crate::app_settings::capture_needs_restart(
+                                crate::app_settings::capture_settings().enabled,
+                            ) =>
+                            {
+                                ControlReply::error(
+                                    "feature-off",
+                                    "Annotate turns on when Hex restarts; run `hex restart`",
+                                )
+                            }
                             None => ControlReply::error(
                                 "feature-off",
                                 "Annotate is off; turn it on in Settings › Annotate or \

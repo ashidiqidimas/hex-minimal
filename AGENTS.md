@@ -93,6 +93,9 @@ commit as the change.
   (`release_gpu_when_closed()` in `macos_rune.rs`): a hidden window kept
   its drawables and text atlas. Closed footprint 248–280 MB → 222 MB;
   reopen ~65 ms → ~80 ms.
+- Annotate off at launch creates no capsule, picker, or ink overlay
+  (`CaptureOverlays::install_if_on`); its switch takes full effect at the
+  next restart, which its pane offers.
 
 ## Purpose
 
@@ -1106,7 +1109,8 @@ CoreAudio formats, AppleScript details, or event serialization.
   Window still needs the portal and fails with why rather than widening to
   the screen. With `capture.enabled` off, the
   listener builds no capture host: no engine, sink, thread, bundle folder,
-  or work. Scrawl's engine
+  or work, and an app launched with it off creates none of its overlays;
+  the switch then takes full effect at the next restart. Scrawl's engine
   records the screen, runs with `SharedResources::none()` (Hex never calls
   `install_shared_resources`: no ingest server, ingest token, or global
   shortcuts), logs to tracing, and writes only to the captures folder

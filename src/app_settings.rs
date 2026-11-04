@@ -71,6 +71,16 @@ static CAPTURE_SETTINGS: OnceLock<RwLock<CaptureSettings>> = OnceLock::new();
 static SCRAWL_APP_RUNNING: AtomicBool = AtomicBool::new(false);
 #[cfg(hex_capture)]
 static CAPTURE_ON: AtomicBool = AtomicBool::new(false);
+/// Whether the app created Annotate's overlays at launch: [`OVERLAYS_UNSET`]
+/// in processes without them (CLI, tests), else installed or skipped.
+#[cfg(hex_capture)]
+static CAPTURE_OVERLAYS: AtomicU8 = AtomicU8::new(OVERLAYS_UNSET);
+#[cfg(hex_capture)]
+const OVERLAYS_UNSET: u8 = 0;
+#[cfg(hex_capture)]
+const OVERLAYS_INSTALLED: u8 = 1;
+#[cfg(hex_capture)]
+const OVERLAYS_SKIPPED: u8 = 2;
 /// [`CaptureSettings::capsule_flow`] for the capsule, without a lock.
 #[cfg(hex_capture)]
 static CAPSULE_FLOW: AtomicU8 = AtomicU8::new(0);
@@ -994,10 +1004,11 @@ impl AppSettings {
             .filter(|binding| !self.hotkey_in_use(HotkeySlot::SecondDictation, binding))
     }
 
-    /// Annotate is on: the person hasn't turned it off.
+    /// Annotate is on: the person hasn't turned it off, and this app
+    /// created its overlays (see [`capture_overlays_allowed`]).
     #[cfg(hex_capture)]
     pub fn capture_on(&self) -> bool {
-        self.capture.enabled
+        self.capture.enabled && capture_overlays_allowed()
     }
 
     /// A shortcut saved as a bare left click swallowed every click, so its

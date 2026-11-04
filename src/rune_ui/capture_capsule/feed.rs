@@ -291,6 +291,14 @@ pub(crate) struct CaptureOverlays {
 }
 
 impl CaptureOverlays {
+    /// The overlays when Annotate is on at launch. Off creates none: their
+    /// full-screen drawables and text atlases cost about 50 MB even hidden.
+    pub(crate) fn install_if_on<S: 'static>(app: &mut rune::App<S>) -> Option<Self> {
+        let on = crate::app_settings::capture_enabled_at_launch();
+        crate::app_settings::set_capture_overlays_installed(on);
+        on.then(|| Self::install(app))
+    }
+
     /// Adds the three overlays, prewarmed and hidden, and starts following
     /// captures.
     pub(crate) fn install<S: 'static>(app: &mut rune::App<S>) -> Self {

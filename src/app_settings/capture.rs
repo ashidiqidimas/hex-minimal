@@ -189,10 +189,69 @@ pub fn capsule_flow() -> CapsuleFlow {
         .unwrap_or_default()
 }
 
-/// Annotate is on (`capture.enabled`).
+/// Annotate is on ([`AppSettings::capture_on`]).
 #[cfg(hex_capture)]
 pub fn capture_on() -> bool {
     CAPTURE_ON.load(Ordering::Acquire)
+}
+
+/// Annotate's switch as the app launches, before it decides whether to
+/// create the overlays.
+#[cfg(hex_capture)]
+pub fn capture_enabled_at_launch() -> bool {
+    CAPTURE_ON.load(Ordering::Acquire)
+}
+
+/// False once an app launched with Annotate off: it created no overlays,
+/// so captures wait for a restart rather than run without a capsule.
+#[cfg(hex_capture)]
+pub(super) fn capture_overlays_allowed() -> bool {
+    CAPTURE_OVERLAYS.load(Ordering::Acquire) != OVERLAYS_SKIPPED
+}
+
+/// Records whether the app created Annotate's overlays. Rune can't remove
+/// an overlay, so this holds until Hex restarts.
+#[cfg(hex_capture)]
+pub fn set_capture_overlays_installed(installed: bool) {
+    let state = if installed {
+        OVERLAYS_INSTALLED
+    } else {
+        OVERLAYS_SKIPPED
+    };
+    CAPTURE_OVERLAYS.store(state, Ordering::Release);
+}
+
+/// Whether Annotate's switch, now `enabled`, takes full effect only after a
+/// restart: turning it on needs the overlays this app skipped, and turning
+/// it off frees the ones it created.
+#[cfg(hex_capture)]
+pub fn capture_needs_restart(enabled: bool) -> bool {
+    needs_restart(CAPTURE_OVERLAYS.load(Ordering::Acquire), enabled)
+}
+
+#[cfg(hex_capture)]
+fn needs_restart(overlays: u8, enabled: bool) -> bool {
+    match overlays {
+        OVERLAYS_INSTALLED => !enabled,
+        OVERLAYS_SKIPPED => enabled,
+        _ => false,
+    }
+}
+
+#[cfg(all(test, hex_capture))]
+mod overlay_tests {
+    use super::*;
+
+    #[test]
+    fn a_switch_unlike_the_launch_needs_a_restart() {
+        assert!(!needs_restart(OVERLAYS_INSTALLED, true));
+        assert!(needs_restart(OVERLAYS_INSTALLED, false));
+        assert!(!needs_restart(OVERLAYS_SKIPPED, false));
+        assert!(needs_restart(OVERLAYS_SKIPPED, true));
+        // The CLI and tests never decide, so never ask.
+        assert!(!needs_restart(OVERLAYS_UNSET, true));
+        assert!(!needs_restart(OVERLAYS_UNSET, false));
+    }
 }
 
 /// Scrawl's own app is running, so it owns the capture shortcut and Hex

@@ -66,6 +66,16 @@ for name in HEX_LOCAL_BUILD HEX_TEST_BUILD HEX_COMMIT HEX_BUILD_CHANNEL; do
     env_args+=(--config "env.$name='$value'")
   fi
 done
+# ggml's Metal kernels ship precompiled in Resources/default.metallib rather
+# than as source compiled at each model load, which kept ~25 MB of compiler
+# output resident. Plain `cargo` builds keep the embedded source, since they
+# have no bundle to find the metallib in.
+transcribe_cmake_args="${TRANSCRIBE_CMAKE_ARGS:+$TRANSCRIBE_CMAKE_ARGS }-DGGML_METAL_EMBED_LIBRARY=OFF"
+case "$transcribe_cmake_args" in
+  *\'*) echo "TRANSCRIBE_CMAKE_ARGS must not contain a single quote" >&2; exit 1 ;;
+esac
+export TRANSCRIBE_CMAKE_ARGS="$transcribe_cmake_args"
+env_args+=(--config "env.TRANSCRIBE_CMAKE_ARGS='$transcribe_cmake_args'")
 # The helper's embedded Info.plist names Hex, not Scrawl.
 SCRAWL_HELPER_PLIST="$root/packaging/macos/scrawl-helper-Info.plist" \
   cargo build --locked --release ${env_args[@]+"${env_args[@]}"} --manifest-path "$root/Cargo.toml"
@@ -75,6 +85,17 @@ cp "$root/target/release/hex" "$executable"
 cp "$root/target/release/scrawl-helper" "$bundle/Contents/MacOS/scrawl-helper"
 cp "$root/app/Info.plist" "$bundle/Contents/Info.plist"
 cp "$root/LICENSE" "$root/THIRD_PARTY_NOTICES.md" "$bundle/Contents/Resources/"
+# The newest metallib this release build produced (one per transcribe-cpp-sys
+# build hash; the stale ones linger).
+metallib=$(find "$root/target/release/build" -path '*transcribe-cpp-sys-*' -name default.metallib -print0 \
+  | xargs -0 ls -t 2>/dev/null | head -n 1)
+if [ -z "$metallib" ]; then
+  echo "no default.metallib in target/release/build; ggml's Metal kernels would not load" >&2
+  exit 1
+fi
+cp "$metallib" "$bundle/Contents/Resources/default.metallib"
+tensor_metallib="$(dirname "$metallib")/ggml-tensor.metallib"
+[ -f "$tensor_metallib" ] && cp "$tensor_metallib" "$bundle/Contents/Resources/"
 HEX_VERSION="$version" HEX_BUILD_NUMBER="$build_number" HEX_TEAM_ID="$team_id" HEX_CODESIGN_IDENTITY="${identity#-}" HEX_SKIP_INSTALL_SCRIPT=1 \
   "$root/scripts/build-hex-microphone-driver.sh" "$bundle/Contents/Library" >&2
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $version" "$bundle/Contents/Info.plist"

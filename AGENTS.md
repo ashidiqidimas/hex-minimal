@@ -100,6 +100,11 @@ commit as the change.
   dictation shortcut's press reloads an unloaded model
   (`TranscriptionEngine::warm`), so the ~0.45 s load runs while you speak.
   Unloaded footprint 65 MB.
+- The macOS app bundles ggml's Metal kernels precompiled
+  (`Contents/Resources/default.metallib`, `scripts/build-app.sh` builds
+  with `-DGGML_METAL_EMBED_LIBRARY=OFF`) instead of compiling their source
+  at each model load. Plain `cargo` builds still embed the source. Loaded
+  footprint 90 s after launch 133 MB → 104 MB.
 
 ## Purpose
 

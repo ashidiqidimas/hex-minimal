@@ -74,21 +74,6 @@ pub(super) fn spark(state: &Spark, p: Paint, key: &str, size: f32, reduced: bool
     col().key(key).size(size, size).pixels(&state.pixels)
 }
 
-/// Shows the frame for `clock`; returns how long until the image next
-/// changes.
-pub(super) fn poll(state: &Spark, clock: f64) -> f64 {
-    state.clock.set(clock);
-    if let Some(look) = state.look.get() {
-        show(state, look, frame(look, clock));
-    }
-    let into = into(clock);
-    if into >= REST {
-        1.0 / 60.0
-    } else {
-        f64::from((REST - into) * PERIOD)
-    }
-}
-
 /// How far into its loop the sparkle is at `clock`, 0 to 1.
 fn into(clock: f64) -> f32 {
     (clock / f64::from(PERIOD)).rem_euclid(1.0) as f32

@@ -105,6 +105,10 @@ commit as the change.
   with `-DGGML_METAL_EMBED_LIBRARY=OFF`) instead of compiling their source
   at each model load. Plain `cargo` builds still embed the source. Loaded
   footprint 90 s after launch 133 MB → 104 MB.
+- Output's agent-card sparkle stays face-on (`rune_ui::spark`): each
+  turning frame was a GPU upload whose command-buffer pools stayed in the
+  device the HUD shares with the window. Closing Output after a visit
+  127 → 222 MB before; 144 → 150 MB now.
 
 ## Purpose
 

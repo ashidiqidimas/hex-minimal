@@ -43,6 +43,7 @@ mod models;
 mod modes;
 mod onboarding;
 mod onboarding_kit;
+mod openrouter;
 mod output;
 mod paste_access;
 mod picker;

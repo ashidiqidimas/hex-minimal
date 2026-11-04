@@ -45,6 +45,13 @@ One line per change on `personal`: what and why. Update it in the same
 commit as the change.
 
 - This section.
+- OpenRouter rewrites (`src/dictation/openrouter.rs`, hooked into
+  `processor::generate_cancellable`/`load_model_catalog`, the meeting-notes
+  gate, and Output's "Rewrite with OpenRouter" card in
+  `src/rune_ui/openrouter.rs`): with `OPENROUTER_API_KEY` or a key saved in
+  that card (owner-only `openrouter-key` in the data folder), rewrites and
+  meeting notes call OpenRouter directly (default model
+  `reflection/beam-1.0-501b-a23b`), so OpenCode never has to run.
 
 ## Private Kit Tool
 

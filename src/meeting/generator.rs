@@ -118,7 +118,8 @@ fn chosen() -> Option<Writer> {
         return Some(Writer::AppleIntelligence);
     }
     (crate::app_settings::meeting_notes_with_opencode()
-        && crate::desktop::opencode_service::running())
+        && (crate::desktop::opencode_service::running()
+            || crate::dictation::openrouter::api_key().is_some()))
     .then_some(Writer::OpenCode)
 }
 

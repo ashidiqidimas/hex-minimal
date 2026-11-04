@@ -703,6 +703,9 @@ fn ranked_candidates_for(service: &Service) -> Vec<Model> {
 /// says to update it.
 pub fn load_model_catalog() -> Result<Option<ModelCatalog>> {
     use crate::desktop::opencode_service::Missing;
+    if crate::dictation::openrouter::api_key().is_some() {
+        return openrouter_catalog().map(Some);
+    }
     let service = match crate::desktop::opencode_service::find() {
         Ok(service) => service,
         Err(Missing::NotRunning) => return Ok(None),
@@ -918,6 +921,18 @@ fn generate_cancellable(
     if crate::policy::Policy::current().locks(lock) {
         return Err(eyre!(lock.refusal()));
     }
+    if let Some(key) = crate::dictation::openrouter::api_key() {
+        return generate_with_candidates(
+            prompt,
+            model,
+            || vec![openrouter_default_model()],
+            || {},
+            started,
+            deadline,
+            cancelled,
+            |data, remaining, cancelled| post_openrouter(&key, data, remaining, cancelled),
+        );
+    }
     let service =
         crate::desktop::opencode_service::find().map_err(|missing| eyre!(missing.message()))?;
     generate_with_candidates(
@@ -1091,6 +1106,91 @@ fn post_generation(
     }
     serde_json::from_slice(&response.body)
         .wrap_err("OpenCode returned an invalid generation response")
+}
+
+/// OpenRouter's catalog shaped like OpenCode's, with the fork's default model
+/// first, so the Modes pane works unchanged.
+fn openrouter_catalog() -> Result<ModelCatalog> {
+    use crate::dictation::openrouter::DEFAULT_MODEL;
+    let models = crate::dictation::openrouter::catalog()?
+        .into_iter()
+        .filter_map(|model| {
+            let (provider, id) = model.id.split_once('/')?;
+            Some(ModelInfo {
+                id: id.into(),
+                provider_id: provider.into(),
+                name: model.name,
+                enabled: true,
+                capabilities: ModelCapabilities {
+                    output: vec!["text".into()],
+                },
+                variants: model
+                    .variants
+                    .into_iter()
+                    .map(|id| ModelVariant { id })
+                    .collect(),
+            })
+        })
+        .collect();
+    let mut catalog = build_model_catalog(models, None);
+    if let Some(index) = catalog.models.iter().position(|m| m.key == DEFAULT_MODEL) {
+        let default = catalog.models.remove(index);
+        catalog.default_name = Some(default.name.clone());
+        catalog.models.insert(0, default);
+    }
+    catalog.default_key = Some(DEFAULT_MODEL.into());
+    catalog.default_variant = None;
+    Ok(catalog)
+}
+
+fn openrouter_default_model() -> Model {
+    let (provider, id) = crate::dictation::openrouter::DEFAULT_MODEL
+        .split_once('/')
+        .expect("OpenRouter model IDs are provider/model");
+    Model {
+        provider: provider.into(),
+        id: id.into(),
+        variant: None,
+    }
+}
+
+/// Sends the request `generate_with_candidates` serialized for OpenCode to
+/// OpenRouter instead, so both backends share its model fallback.
+fn post_openrouter(
+    key: &str,
+    data: &str,
+    deadline: Duration,
+    cancelled: &AtomicBool,
+) -> Result<Response> {
+    #[derive(Deserialize)]
+    struct Sent {
+        prompt: String,
+        model: Option<Model>,
+    }
+    let sent: Sent = serde_json::from_str(data)?;
+    let model = sent
+        .model
+        .as_ref()
+        .map(|model| crate::dictation::openrouter::model_id(&model.provider, &model.id));
+    let effort = sent
+        .model
+        .as_ref()
+        .and_then(|model| model.variant.as_deref());
+    Ok(
+        match crate::dictation::openrouter::complete(
+            key,
+            &sent.prompt,
+            model.as_deref(),
+            effort,
+            deadline,
+            cancelled,
+        )? {
+            Ok(text) => Response::Success {
+                data: ResponseData { text },
+            },
+            Err(message) => Response::Error { message },
+        },
+    )
 }
 
 /// A 404 means the route is missing only when it isn't OpenCode's own tagged

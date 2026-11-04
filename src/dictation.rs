@@ -14,6 +14,8 @@ pub(crate) mod live_text;
 #[cfg_attr(target_os = "macos", allow(dead_code))]
 pub(crate) mod modes;
 #[cfg_attr(any(target_os = "linux", target_os = "windows"), allow(dead_code))]
+pub(crate) mod openrouter;
+#[cfg_attr(any(target_os = "linux", target_os = "windows"), allow(dead_code))]
 pub(crate) mod processor;
 pub(crate) mod service;
 pub(crate) mod spoken_formatting;

@@ -195,6 +195,7 @@ pub(super) fn pane(ui: &Ui, p: Paint, reduced: bool) -> El {
     let mut content = page("output-content")
         .children(trust_card(ui, p))
         .child(agent_card(ui, p, reduced))
+        .child(super::openrouter::card_section(ui, p))
         .child(every_dictation(ui, p, &processing.default_mode))
         .child(try_card(ui, p, &processing.default_mode));
     if !processing.modes.is_empty() {

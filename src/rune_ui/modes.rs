@@ -150,6 +150,10 @@ pub(super) struct ModesPane {
     config_exists: bool,
     workspace_receiver: Option<Receiver<Result<PathBuf, String>>>,
     workspace_error: Option<String>,
+    /// The OpenRouter API key draft (fork change), saved on Return; shown in
+    /// Output by `super::openrouter`.
+    pub(super) openrouter_key: TextEdit,
+    pub(super) openrouter_key_note: Option<String>,
 }
 
 impl ModesPane {
@@ -179,6 +183,10 @@ impl ModesPane {
             config_exists: true,
             workspace_receiver: None,
             workspace_error: None,
+            openrouter_key: TextEdit::new(
+                crate::dictation::openrouter::saved_key().unwrap_or_default(),
+            ),
+            openrouter_key_note: None,
         }
     }
 

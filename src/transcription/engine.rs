@@ -133,6 +133,10 @@ pub(crate) enum Command {
     /// no room for both (#1170).
     #[cfg_attr(target_os = "macos", allow(dead_code))]
     Reload(crate::transcription::models::TranscriptionSelection),
+    /// Reloads a model Labs › Unload model when idle parked, so it is ready
+    /// by the time a dictation that just started needs it.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    Warm,
     Background {
         /// The dictation generation when the work was submitted.
         generation: u64,
@@ -784,6 +788,14 @@ impl TranscriptionEngine {
             .map_err(|_| eyre!("transcription engine stopped"))
     }
 
+    /// Starts reloading an idle-unloaded model now, at the dictation
+    /// shortcut's press, rather than when the hold threshold opens the
+    /// stream. A loaded model makes it a no-op.
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    pub fn warm(&self) {
+        let _ = self.commands.send(Command::Warm);
+    }
+
     /// Drops the engine on its own thread, so replacing the model from the
     /// hotkey loop never waits on a run still in flight.
     #[cfg_attr(target_os = "macos", allow(dead_code))]
@@ -1018,6 +1030,10 @@ impl Worker {
                     self.model = None;
                     self.parked = Some(selection);
                     // A failed load stays parked; the next command tries again.
+                    let _ = self.model();
+                    self.publish_streams();
+                }
+                Command::Warm => {
                     let _ = self.model();
                     self.publish_streams();
                 }

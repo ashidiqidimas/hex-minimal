@@ -76,7 +76,7 @@ pub struct LabsSettings {
 }
 
 /// The idle times Labs › Unload model when idle offers, in minutes.
-pub const UNLOAD_IDLE_MINUTES: [u32; 4] = [5, 15, 30, 60];
+pub const UNLOAD_IDLE_MINUTES: [u32; 5] = [3, 5, 15, 30, 60];
 
 impl Default for LabsSettings {
     fn default() -> Self {

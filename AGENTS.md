@@ -96,6 +96,10 @@ commit as the change.
 - Annotate off at launch creates no capsule, picker, or ink overlay
   (`CaptureOverlays::install_if_on`); its switch takes full effect at the
   next restart, which its pane offers.
+- Labs › Unload model when idle offers 3 minutes, and on macOS the
+  dictation shortcut's press reloads an unloaded model
+  (`TranscriptionEngine::warm`), so the ~0.45 s load runs while you speak.
+  Unloaded footprint 65 MB.
 
 ## Purpose
 

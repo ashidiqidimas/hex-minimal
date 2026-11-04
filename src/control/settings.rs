@@ -295,7 +295,7 @@ const KEYS: &[Key] = &[
     ),
     key(
         "labs.unload_idle_minutes",
-        Kind::Choice(&["5", "15", "30", "60"]),
+        Kind::Choice(&["3", "5", "15", "30", "60"]),
         "Minutes unused before Labs › Unload model when idle unloads the model",
     ),
     key(

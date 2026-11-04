@@ -654,7 +654,7 @@ Labs > Second dictation shortcut (macOS, off)   // labs.md; issue 627
   -> it dictates like the shortcut: Hold/Toggle, double-tap lock, release
   -> the shortcut that starts a capture finishes it; the other stands down meanwhile
 
-Labs > Unload model when idle (off; 5/15/30/60 min, default 15)   // labs.md; transcription/engine
+Labs > Unload model when idle (off; 3/5/15/30/60 min, default 15)   // labs.md; transcription/engine
   -> nothing used the model that long and nothing records -> the model unloads
   -> next press, meeting chunk, or API request -> reloads first; audio waits, nothing lost
 ```

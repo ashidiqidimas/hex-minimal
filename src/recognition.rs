@@ -1259,6 +1259,10 @@ fn handle_hotkey_action(
             if !dictation.start(action_at)? {
                 return Ok(false);
             }
+            // An idle-unloaded model reloads during the hold, not after it.
+            if let Some(engine) = worker.engine() {
+                engine.warm();
+            }
             // The tone confirms the press at once; a chord or short tap
             // retracts it. A released microphone confirms only once it opens.
             if release_while_idle {

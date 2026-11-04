@@ -29,7 +29,7 @@ Feature             Pane  Toggle (settings.json, hex settings)   On: what it doe
 ├── Mouse shortcuts no    labs.mouse_shortcuts         (macOS)   mouse buttons record as shortcuts (#209)
 ├── Also pause the browser no pause_browser_media      (macOS)   pause a playing tab too, with Pause media (#301); General shows its permission row
 ├── Share dictation shortcut no share_dictation_shortcut (Windows) apps such as Discord see the shortcut too (#176)
-├── Unload model when idle no labs.unload_idle + labs.unload_idle_minutes (5/15/30/60, default 15)
+├── Unload model when idle no labs.unload_idle + labs.unload_idle_minutes (3/5/15/30/60, default 15)
 │                                        the engine frees the speech model after that long unused (#442)
 ├── Restore shortcut default no labs.restore_shortcut_default   Paste last dictation's row offers its default back (#613)
 ├── Keep dictation on clipboard no labs.keep_on_clipboard (macOS) a pasted dictation stays on the clipboard; the previous one is not restored (#200)
@@ -135,7 +135,7 @@ still reaches the app. Check:
 observed: a real two-display Mac dragging windows with Hex running.
 
 Unload model when idle (`unload-idle`, issue 442 from @theoneand33): while
-on, its row shows "Unload after" (5, 15, 30, or 60 minutes; default 15).
+on, its row shows "Unload after" (3, 5, 15, 30, or 60 minutes; default 15).
 `transcription/engine`'s worker unloads a loaded GGUF model once no command
 has reached it for that long and nothing records (`audio::idle_sleep::held()`: a
 dictation past its hold or a meeting; a macOS capture from its press via
@@ -144,7 +144,9 @@ runs. Apple Speech stays loaded. The unloaded model still counts as held
 (`TranscriptionEngine::holds`), so dictation, meetings, and the local API send
 their work to the engine as before, and the worker reloads it before the
 first command that needs it: audio fed meanwhile waits in the queue, so
-nothing recorded is lost. A capture's stream opens after the reload and
+nothing recorded is lost. On macOS the dictation shortcut's press sends
+`TranscriptionEngine::warm`, so the reload starts at the press rather than
+when the hold threshold opens the stream. A capture's stream opens after the reload and
 catches up, falling back to the whole clip if it can't finish in time; the
 HUD shows its transcribing state while a released clip waits on the reload,
 with no look of its own. A failed reload fails that job and is retried by the

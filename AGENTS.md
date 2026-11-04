@@ -89,6 +89,10 @@ commit as the change.
   that card (owner-only `openrouter-key` in the data folder), rewrites and
   meeting notes call OpenRouter directly (default model
   `reflection/beam-1.0-501b-a23b`), so OpenCode never has to run.
+- macOS window releases its GPU resources on close
+  (`release_gpu_when_closed()` in `macos_rune.rs`): a hidden window kept
+  its drawables and text atlas. Closed footprint 248–280 MB → 222 MB;
+  reopen ~65 ms → ~80 ms.
 
 ## Purpose
 

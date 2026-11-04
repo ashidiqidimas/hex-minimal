@@ -480,6 +480,9 @@ pub fn run(shutdown: &'static AtomicBool, listener: ListenerConfig) -> Result<()
     } else {
         app.windowless()
     };
+    // A hidden window keeps its drawables and text atlas (about 45 MB);
+    // Hex lives in the menu bar, so drop them and rebuild on reopen.
+    app = app.release_gpu_when_closed();
     let capsules = {
         let window = window.clone();
         crate::rune_ui::meeting_capsules::MeetingCapsules::install(

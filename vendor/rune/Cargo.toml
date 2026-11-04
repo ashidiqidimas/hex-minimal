@@ -1,0 +1,41 @@
+# Rune at anomalyco/rune ae0c94990cf7c8c0037de36d912ccb9c794db8a9, only the
+# crates Hex builds, vendored so the fork can patch it (see PATCHES.md).
+# This root only gives them the workspace settings they inherit; Hex's own
+# workspace excludes it.
+[workspace]
+resolver = "3"
+members = [
+    "crates/rune",
+    "crates/rune-kit",
+    "crates/rune-motion",
+    "crates/rune-staging",
+    "crates/rune-taffy",
+    "crates/procwatch",
+    "crates/rune-mermaid",
+    "themes/opencode",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+
+[workspace.lints.rust]
+# shared-lints begin
+unsafe_op_in_unsafe_fn = "deny"
+unused_must_use = "deny"
+# shared-lints end
+unsafe_code = "allow" # shared: forbid; GPU and FFI code needs unsafe
+
+[workspace.lints.clippy]
+# shared-lints begin
+await_holding_lock = "deny"
+await_holding_refcell_ref = "deny"
+dbg_macro = "deny"
+disallowed_types = "deny"
+expect_used = "warn"
+todo = "warn"
+unwrap_used = "warn"
+# shared-lints end
+undocumented_unsafe_blocks = "warn" # shared: deny; errors left
+let_underscore_must_use = "warn" # shared: deny; errors left
+disallowed_methods = "warn" # shared: deny; errors left

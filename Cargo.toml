@@ -15,7 +15,7 @@ repository = "https://github.com/anomalyco/hex"
 # defeat `exclude`.
 [workspace]
 members = ["crates/router"]
-exclude = ["crates/capture", "crates/capture-core"]
+exclude = ["crates/capture", "crates/capture-core", "vendor/rune"]
 
 [[test]]
 name = "keyboard_layout"
@@ -44,6 +44,18 @@ strip = true
 [patch.crates-io]
 transcribe-cpp = { git = "https://github.com/anomalyco/transcribe.cpp", rev = "7045d1c0fe7cee37747b2792977421d435e75fca" }
 transcribe-cpp-sys = { git = "https://github.com/anomalyco/transcribe.cpp", rev = "7045d1c0fe7cee37747b2792977421d435e75fca" }
+
+# Rune, vendored at the pinned rev with the fork's patches
+# (vendor/rune/PATCHES.md). The git dependencies below keep the upstream
+# rev, so cherry-picked pin bumps still name it; refresh vendor/rune to match.
+[patch."https://github.com/anomalyco/rune.git"]
+procwatch = { path = "vendor/rune/crates/procwatch" }
+rune = { path = "vendor/rune/crates/rune" }
+rune-kit = { path = "vendor/rune/crates/rune-kit" }
+rune-motion = { path = "vendor/rune/crates/rune-motion" }
+rune-staging = { path = "vendor/rune/crates/rune-staging" }
+rune-taffy = { path = "vendor/rune/crates/rune-taffy" }
+rune-theme-opencode = { path = "vendor/rune/themes/opencode" }
 
 [dependencies]
 clap = { version = "4.6.7", features = ["derive"] }

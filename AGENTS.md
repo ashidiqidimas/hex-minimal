@@ -3,48 +3,85 @@
 
 ## Personal fork (read first)
 
-This checkout is Dimas's personal fork of `anomalyco/hex`. This section
-overrides upstream's process below (Private Kit Tool, PRs to `dev`, CI,
-releases, Dax/Kit approvals): none of that applies here. Upstream takes no
-pull requests.
+This checkout is Dimas's own project, forked from `anomalyco/hex`. Its goal
+is a simpler Hex that uses less RAM: removing features he doesn't need is
+the main kind of work here. This section overrides everything below it.
+Upstream's process (PRs, CI, releases, signing for Anomaly, Labs-first
+rollout, Rune pin bumps, approvals from Dax or Kit) doesn't apply. The rest
+of this guide describes upstream's code and still holds for whatever this
+fork keeps.
 
 - Remotes: `origin` is the fork (`ashidiqidimas/hex-minimal`), `upstream`
-  is `anomalyco/hex`.
-- `dev` is a pristine mirror of `upstream/dev`; it only ever fast-forwards.
-  All fork work lives on `personal`, committed directly (no PRs). Larger
-  experiments branch from `personal` and merge back.
-- Sync with upstream by rebasing `personal` onto it:
+  is `anomalyco/hex`. `personal` is the main branch; commit to it directly.
+  Larger experiments branch from `personal` and merge back.
+- Upstream is a source of changes to **cherry-pick**, never a base. Never
+  rebase `personal` onto upstream or merge `upstream/dev` into it: either
+  replays every removal and brings deleted features back.
+- Fork changes, including new features, ship on, outside Labs, unless
+  Dimas asks otherwise.
 
-  ```sh
-  git fetch upstream
-  git checkout dev && git merge --ff-only upstream/dev && git push origin dev
-  git checkout personal && git rebase dev
-  git push --force-with-lease origin personal
-  ```
+### Taking upstream changes
 
-  `rerere` is enabled, so repeated conflicts resolve themselves; check its
-  result. Resolve a conflict by keeping upstream's change plus the fork
-  change's intent (see Fork changes). Drop a fork commit upstream made
-  obsolete.
-- Keep fork changes additive: new files or modules hooked in at few lines,
-  so rebases stay cheap. Squash fixups into the commit they fix.
-- Build and install the signed local app (Developer ID in the login
-  keychain, team `H9PJ7U2A6K`):
+Do this only when Dimas asks to check upstream. `UPSTREAM.md` holds the
+last reviewed upstream commit and a log of every decision.
 
-  ```sh
-  HEX_TEAM_ID=H9PJ7U2A6K HEX_LOCAL_BUILD=1 ./scripts/install-app.sh
-  ```
+1. Run `scripts/upstream-review.sh`. It fetches and lists each upstream
+   commit since the marker with the files it touches, flagging paths this
+   fork removed.
+2. Summarize each commit for Dimas in a line or two, with a take or skip
+   recommendation. Recommend skipping commits that only touch removed
+   code, or other OSes when the change has no shared part. Recommend
+   taking fixes to shared code the fork still runs. Dimas decides.
+3. Take each chosen commit with `git cherry-pick -x <sha>` (`-x` records
+   the source). On a conflict, keep upstream's fix plus the fork's intent;
+   for a file the fork deleted, keep it deleted (`git rm`) and port only
+   what applies elsewhere. `rerere` is enabled; check its resolutions.
+4. Build and run `scripts/check` on what changed.
+5. In `UPSTREAM.md`, log every listed commit as taken or skipped with a
+   reason, and move `Last reviewed` to the newest commit listed. Commit
+   that with the picks.
 
-  `HEX_LOCAL_BUILD=1` disables self-updates, which would replace the fork
-  with upstream's release. When cargo reports `rustc … is not supported`,
-  run `rustup update stable`.
+### Changing the fork so picks stay cheap
+
+- Remove a feature whole: delete its modules, files, dependencies,
+  threads, settings, and UI rather than hiding it behind a switch. Code
+  that still compiles and starts still costs RAM. A deleted file makes
+  upstream changes to it an obvious skip; a hollowed-out file makes them
+  hand merges.
+- Keep paths, module names, and formatting of the code that remains as
+  upstream has them. Renames and moves break cherry-picks most.
+- One change per commit with a clear message, so upstream commits can be
+  matched against it.
+- In the same commit, delete the removed feature's entries in this guide
+  (Architecture, Invariants, Purpose) and its `docs/features/` map, and add
+  a line to Fork changes.
+- Measure RAM before and after a removal on the installed app:
+  `footprint $(pgrep -x hex)` (about 314 MB on 2026-11-04 with the speech
+  model loaded). Record notable savings in Fork changes.
+- Golden image tests run only on Linux; refresh or delete them when a
+  change alters the window, but they don't gate work on the Mac.
+
+### Build and install
+
+Signed local app (Developer ID in the login keychain, team `H9PJ7U2A6K`):
+
+```sh
+HEX_TEAM_ID=H9PJ7U2A6K HEX_LOCAL_BUILD=1 ./scripts/install-app.sh
+```
+
+`HEX_LOCAL_BUILD=1` disables self-updates, which would replace the fork
+with upstream's release. When cargo reports `rustc … is not supported`, run
+`rustup update stable`.
 
 ### Fork changes
 
 One line per change on `personal`: what and why. Update it in the same
 commit as the change.
 
-- This section.
+- This section, `UPSTREAM.md`, and `scripts/upstream-review.sh`: the fork
+  takes upstream changes by cherry-pick, not rebase. Upstream-only process
+  (Kit's tooling, CI, releases, the SDK, the release freeze, Rune pin
+  bumps) was cut from this guide.
 - OpenRouter rewrites (`src/dictation/openrouter.rs`, hooked into
   `processor::generate_cancellable`/`load_model_catalog`, the meeting-notes
   gate, and Output's "Rewrite with OpenRouter" card in
@@ -52,26 +89,6 @@ commit as the change.
   that card (owner-only `openrouter-key` in the data folder), rewrites and
   meeting notes call OpenRouter directly (default model
   `reflection/beam-1.0-501b-a23b`), so OpenCode never has to run.
-
-## Private Kit Tool
-
-`dev` and `production` take changes only through pull requests (Dax's
-ruleset; `.github/` changes also need Dax). Branch from `dev`, open a PR to
-`dev`, and merge it yourself once it compiles (don't wait on CI); merge any open PR without
-asking. After merging, update the installed copy. See
-`~/code/control/AGENTS.md`. `production` holds what was released and moves
-only by a fast-forward from `dev` when Kit releases; never commit to it.
-There is no `main`.
-
-Any change to what the window draws regenerates the goldens in the same PR:
-run `HEX_UPDATE_GOLDENS=1 cargo test --locked --bin hex rune_ui`
-on Linux (the golden tests only run there; from a Mac, dispatch
-`check-linux.yml` on the branch and take its `golden-actual` artifact),
-look at every changed image, and commit them with the change.
-
-`dev` is canonical and contains the Rune front end on every OS; GPUI is
-removed. The `rune-ui` integration branch is merged and kept only for history:
-branch from and push to `dev`.
 
 ## Purpose
 
@@ -1222,11 +1239,6 @@ CoreAudio formats, AppleScript details, or event serialization.
   rev in `Cargo.toml` and `Cargo.lock`; every pin bump
   must also update `cargoLock.outputHashes."rune-0.0.1"` in `nix/package.nix`
   and keep `windows` 0.62.2 for `gpu-allocator` in `Cargo.lock`.
-- At the start of each work round, bump Hex's Rune pin to Rune's `dev` head:
-  read the `## dev` section of Rune's `CHANGELOG.md` since the current pin,
-  adapt to its breaking changes, update `nix/package.nix`'s outputHash, and
-  run `scripts/check rune_ui`, goldens included. If Rune itself breaks, report
-  it to Rune rather than working around it.
 - Hex runs as one long-lived process per user and data root on every OS: a
   menu-bar process on macOS (`macos_rune`, native `NSStatusItem`, native Metal
   `NSPanel` HUD, Rune meeting-capsule overlays), a tray process on Windows
@@ -1411,36 +1423,6 @@ CoreAudio formats, AppleScript details, or event serialization.
 
 ## Development
 
-### TypeScript SDK Releases
-
-The public TypeScript SDK is `@kitlangton/hex` in `sdk/typescript`. The first
-release, `0.1.0`, was bootstrapped manually; subsequent user-facing SDK changes
-must include a Changeset under `sdk/.changeset/` unless preparing an initial
-unpublished package. Run package commands from the `sdk` workspace root.
-
-Before release, run:
-
-```sh
-cd sdk
-bun install --frozen-lockfile
-cd typescript
-bun run check
-bun run test
-bun run build
-npm pack --dry-run
-```
-
-When exports or packaging change, install the packed tarball in a clean consumer
-and import both `@kitlangton/hex` and `@kitlangton/hex/effect`. The release
-workflow is `.github/workflows/release-typescript.yml`; npm trusted publishing
-authorizes `anomalyco/hex` and that exact workflow filename for `npm publish`.
-The workflow uses npm trusted publishing without requesting a Sigstore
-provenance bundle.
-Use the configured Changesets release command (`cd sdk && bun run release`), not
-direct `npm publish`, after the bootstrap release. Pending changesets on `dev`
-keep a version pull request open into `dev`; the workflow publishes only when
-`production` is fast-forwarded to an unpublished SDK version.
-
 ```sh
 ./scripts/setup.sh
 ./scripts/setup-parakeet.sh
@@ -1543,63 +1525,7 @@ smoke tests.
 Microphone selection is System default (the OS default input, live) unless a
 saved microphone is connected; override everything with `--device`. The app
 bundle build requires Xcode 26 for Icon Composer compilation and a Developer ID
-signing identity. `scripts/release-app.sh prepare` builds the notarized and stapled
-DMG and ZIP the Release workflow publishes. Hex publishes every platform to
-the Anomaly release service (`anomalyco/release`, `https://anoma.ly/release`;
-its dev stage, `dev.anoma.ly/release`, only tests the service itself, and Hex
-never publishes to or reads from it) from the Release workflow with curl and its
-GitHub OIDC token, under app `hex`, artifact `desktop`;
-[`docs/plans/release-service.md`](docs/plans/release-service.md) pins the
-target and file names and the direct-install receipt, and
-[`docs/releasing.md`](docs/releasing.md) owns the workflow, channels, secrets,
-and old clients. The 2.3.1 feeds and appcast at `https://anoma.ly/hex/files`
-(and Kit's `downloads.hex.kitlangton.dev`/`.com`, which must keep redirecting
-there) stay frozen. GitHub app releases use `v<VERSION>` tags (`app-v…`
-through 2.3.1); each stable one is created as GitHub's Latest release
-(`--latest=true`, stable only), and SDK releases (`release-typescript.yml`)
-are created with `--latest=false` so they never take the badge. Nothing
-downloads through GitHub's `releases/latest` redirect. Never overwrite a published artifact with different bytes.
-`https://anoma.ly/hex` (in-repo `site/`) is the only Hex website. One
-`site/cloudflare.config.ts` defines the production Worker `hex-production-site` (anoma.ly/hex,
-bucket `hex-production-files`) and the dev Worker `hex-dev-site` (dev.anoma.ly/hex,
-bucket `hex-dev-files`); `cf deploy --prebuilt --mode <mode>` picks one, and
-only CI deploys: a push to `dev` touching `site/` deploys dev, a stable
-Release deploys production. No subdomains. The site's download links come
-from the service's stable manifest when it builds. After publishing a version,
-bump the explicit GitHub mirror/version link in `README.md`; the Release
-workflow updates the Homebrew cask. `bun run --cwd site check:downloads` fails until every download link
-serves a file; every deploy runs it. Verify the live links afterwards.
-The Rust app is named `Hex`, packaged as `Hex.app`,
-with bundle identifier `anomaly.hex` (deliberately not reverse-DNS) and executable
-`hex`; its SDK helper is `anomaly.hex.service` and the virtual microphone driver
-`anomaly.hex.microphone.driver`. Releases through 2.3.1 were `com.kitlangton.hex2`,
-signed by Kit's team `QC99C9JE59`; macOS treats `anomaly.hex` as a new app (fresh
-permissions, login item, and preferences domain), while the `hex` Application
-Support folder, and with it settings, history, and models, is shared. Signing requires
-an explicit `HEX_TEAM_ID` and matching `HEX_NOTARY_PROFILE`; the build
-and release scripts verify the selected team rather than assuming an Anomaly team.
-`scripts/validate-app.sh` checks this identity before preparation and publication.
-The move to Anomaly's team (`5NZ4Q7NXJ4`) is planned in
-`docs/plans/macos-signing.md`; the manual `macOS signed build` workflow signs
-and notarizes an unpublished candidate once the Apple secrets are in the
-`release` environment.
-`scripts/release-app.sh prepare` leaves `hex-<version>-macos-arm64.dmg` and
-`hex-<version>-macos-arm64.zip` (root `Hex.app`, the updater's archive); both
-contain the same signed, stapled app. Do not reuse a released version for
-changed code. Macs on 2.3.1 or earlier and Swift Hex (Sparkle 2.9.4,
-`com.kitlangton.hex2` and `com.kitlangton.Hex`, one shared EdDSA key) update
-straight into the new app (Kit, 2026-11-02): their feeds offer the released
-`Hex.app` ZIP, signed with that old key, and Sparkle's Install Update
-replaces the old app with it. Sparkle accepts it only because `app/Info.plist`
-keeps the old `SUPublicEDKey` (`validate-app.sh` requires it; nothing reads it
-otherwise, and there is still no `SUFeedURL` or Sparkle framework). Users
-click Install Update; nothing installs by itself.
-There is no Swift migration: never import Swift preferences or data or adopt
-its bundle identifier. Once setup is ready, Hex asks a running old Hex (2.3.1
-or Swift) to quit, leaving it installed. See
-`docs/plans/swift-app-handoff.md`. The Rust data root remains unchanged, but the
-new app identity requires fresh macOS permission grants. Validate signed
-distribution with the selected signing team before publishing an app update.
+signing identity; build and install with the command under Personal fork.
 
 `SMAppService` is meaningful only from a signed app installed in
 `/Applications`. When replacing a local bundle outside Finder during a login-item
@@ -1615,96 +1541,6 @@ Pass the actual installed Rust host path to `lsregister` if it was renamed.
 Verify both registration and unregistration with `sfltool dumpbtm`, and restore
 the user's original login-item state after the test. Do not add release test
 hooks or persist a second launch-at-login flag.
-
-Onboarding gates every stable release. Before any stable release, run
-`scripts/check-onboarding.sh` on the release candidate commit and include its
-result, with the scene images it writes, in the go/no-go given to Dax. It
-renders every onboarding scene (Setting up Hex with nothing found, a stopped
-download, the model step with found models, with the recommended model already
-present, ours downloading, and Back to it, the demo, the macOS permissions and
-Windows' microphone switch, Almost ready, the practice game, Hex is ready) in
-both appearances against the approved goldens, and walks a first run through
-the real onboarding in a clean temporary data folder until a model is
-downloaded and it reaches Hex is ready. Any unexpected
-visual or flow change blocks the release; an intentional change refreshes the
-goldens in its own PR. It runs on Linux, like every golden; the macOS and
-Windows scenes are fixtures of the same window and render there too, but
-nothing renders on a real Mac or Windows GPU. Release's `onboarding` job runs
-the same script, and Release's check and stable channels run the full Check
-Linux, Check macOS, and Check Windows suites on the candidate commit; a stable
-run publishes nothing until all four pass.
-
-CI is minimal (Dax): a pull request runs only `hex-agent-policy` and Compile
-(`compile.yml`: `cargo clippy --bin hex` on Linux, macOS, and Windows x64,
-for code changes). Merge as soon as it compiles locally, without waiting for
-CI; the CI failure pipeline fixes breakages on `dev` afterwards. A push to
-`dev` runs no checks: its Release dev build compiles every OS, and Test
-builds run beside it. The full suites (tests, goldens, Nix, Windows ARM64)
-run only in Release's check and stable channels and by hand
-(`gh workflow run check-<os>.yml`).
-
-Every platform is built, signed, and published by one run of
-`.github/workflows/release.yml` ("Release"; see `docs/releasing.md`).
-Run it with `workflow_dispatch` (`ref`, `channel`: `check` builds and
-verifies without publishing, `dev` publishes the dev channel, `stable` the
-public release; dispatched from `production` only). Tags never start a
-release: like OpenCode, the stable run tags `v<VERSION>` (the crate version)
-on the released commit only after every platform published, then creates the
-GitHub release with the built-in `GITHUB_TOKEN`, so a failed run leaves no
-tag; `v*` tags are unrestricted because nothing triggers on them. Like OpenCode's release, build jobs (Linux x64 and ARM64 on
-Ubuntu 24.04 runners with their `.deb` and `.rpm`, Windows x64 and ARM64 through `.github/workflows/build-desktop.yml`,
-macOS as an ad-hoc signed `HEX_RELEASE_UNSIGNED=1` app, installers through
-`windows-installers.yml`, AUR and Homebrew staging) run repository code with
-no environment, secret, or id-token; sign and publish jobs run in `release`,
-check out only `.github/release/`, and run only those scripts and SHA-pinned
-actions on artifacts treated as data (macOS Developer ID signing,
-notarization, and stapling; Azure Authenticode; the release service through
-OIDC; the AUR and Homebrew pushes). Every artifact carries a `SHA256SUMS`
-whose digest its job reports and every consumer checks. Site deploy follows
-the same split: its build job has no secret, and its `release` job runs only
-`.github/release/deploy-site.sh`, which deploys the verified Build Output only
-when it names exactly that mode's site Worker, routes, and bindings, with the
-cf CLI locked in `.github/release/cf/`; Legacy appcast checks out only
-`.github/release/` and the appcast. Keep that boundary:
-never add a step that builds, installs dependencies, or runs repository code
-to a job that holds a secret or an OIDC token, and pin every action by SHA.
-`.github/` changes need Dax (CODEOWNERS and the "release boundary" ruleset).
-`.github/workflows/test-builds.yml` calls the same desktop
-workflow on every push to `dev` with `test-build`, plus an ad-hoc signed
-`Hex Test.app` (`HEX_TEST_BUILD=1 scripts/build-app.sh`: bundle ID
-`anomaly.hex.test`, its own `hex-test` data folder and `~/.config/hex-test`;
-it must never read the real `hex` data), as unsigned 14-day artifacts for
-teammates (`docs/test-builds.md`). `HEX_TEST_BUILD=1` builds never update
-themselves, and neither do local builds (`HEX_LOCAL_BUILD=1`, the owner's own
-build from a checkout: footer "Local build · updates off", version label with its
-commit, no channel row). Every push to `dev` (except docs/site-only changes) publishes a dev-channel
-build (the service lets a run from `dev` publish only the `dev` channel, and
-only signed platforms are published). Stable runs only from `production`.
-Like OpenCode, every run uses the one `release` environment, with no
-required reviewer; its deployment policy admits `dev` and `production`. Rerunning
-after an interruption is safe: the service stores files by hash and accepts
-the same version again.
-
-`hex-setup-<version>-windows-<x64|arm64>.exe` is a per-user Inno Setup
-installer (`packaging/windows/hex.iss`, built by
-`scripts/build-windows-installer.ps1`) that installs exactly the managed
-layout `install-windows.ps1` creates, so self-updates keep working:
-`%APPDATA%\hex\versions\<version>\hex.exe`, `current-version`, the
-`install.json` direct-install receipt, and a Start Menu shortcut carrying the
-managed mark. Its uninstaller lives in `hex\uninstall` because
-updates prune old version directories; it removes every version, the
-receipt, the shortcut, and Launch at login, and keeps settings. It installs
-its version over whatever is installed (versions are never compared). Keep
-its `AppId` forever: the updater rewrites that Apps & Features entry's
-version. Release and the Windows installer workflow install, reinstall,
-install over another version with, and uninstall
-it silently on x64 and ARM64 runners (`scripts/test-windows-installer.ps1`).
-Release's `sign-windows` job Authenticode-signs both `hex.exe` through Azure
-Artifact Signing (GitHub OIDC, SHA-256, RFC 3161 timestamp), the installers
-are built around the signed bytes, and `sign-windows-installers` signs them
-(`.github/release/verify-authenticode.ps1` checks both). Compile jobs and test
-builds never hold signing credentials; until the Azure values exist in
-`release`, dev and check runs have no Windows targets. See `docs/windows-signing.md`.
 
 Run `scripts/build-linux-release.sh` (Docker; `scripts/build-linux.sh` for a
 build against the host's glibc) on x86_64 or aarch64 Linux (then
@@ -1749,20 +1585,3 @@ folders or per-OS settings files.
 
 See `ROADMAP.md`. Do not add hypothetical seams for roadmap items. Introduce a
 seam once there are two real adapters or a current test requires substitution.
-
-## Current Work
-
-`ROADMAP.md` is the authoritative work list. Keep these constraints visible:
-
-- Release freeze (Kit, 2026-10-22): publish no Hex release on any OS, stable or
-  staging-to-stable, and don't move `production` (it stays at `app-v2.3.1`),
-  until Kit lifts it after the Rune front end has been tested thoroughly on
-  real Macs and Windows PCs. Test builds are fine.
-- Validate public onboarding from a clean macOS account and signed Linux updates
-  on the supported Arch/i3 host.
-- Validate native Wayland on a real compatible compositor, including physical
-  portal shortcuts, the `hex` commands from a desktop keybinding,
-  focus/click-through, target paste, and tray-less shutdown.
-- Add a second real browser adapter before generalizing browser context.
-- Do not turn concrete macOS, Linux X11, or command modules into hypothetical
-  platform or plugin frameworks.
